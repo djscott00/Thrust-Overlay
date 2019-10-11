@@ -16,7 +16,9 @@ SetFormat, float, 03  ; Omit decimal point from axis position percentages.
 ; Press Alt-P to toggle whether the graphics are displayed or not.
 
 ;-----------------Device and Key Mapping. Use an empty/blank value if you don't have particular mappings
-;Thrust Keys
+
+
+;Thrust Keys. Should be string values
 mappedVerticalDownKey := "j"
 mappedVertialUpKey := "k"
 mappedLateralLeftKey := 
@@ -32,7 +34,7 @@ mappedRollRightKey :=
 mappedPitchUpKey := 
 mappedPitchDownKey := 
 
-;Joystick/Gamepad Mappings
+;Joystick/Gamepad Mappings. Stick nums should be integer values, and the axis should be strings in the form of "JoyX", "JoyY", etc
 JoystickNum_thrust := 2
 JoystickNum_lateral := 2
 JoystickNum_vertical := 2
@@ -119,24 +121,36 @@ MainLoop:
 	rollVal := 0.0
 	
 	;****Get the thruster axis values
-	GetKeyState, lateralVal, %JoystickNum_lateral%%mappedLateralAxis%
-	lateralVal := Round(2*(lateralVal/100 - 0.5), 2)
+	if(JoystickNum_lateral and mappedLateralAxis) {
+		GetKeyState, lateralVal, %JoystickNum_lateral%%mappedLateralAxis%
+		lateralVal := Round(2*(lateralVal/100 - 0.5), 2)
+	}
 	
-	GetKeyState, thrustVal, %JoystickNum_thrust%%mappedThrustAxis%
-	thrustVal := Round(2*(thrustVal/100 - 0.5), 2)
+	if(JoystickNum_thrust and mappedThrustAxis) {
+		GetKeyState, thrustVal, %JoystickNum_thrust%%mappedThrustAxis%
+		thrustVal := Round(2*(thrustVal/100 - 0.5), 2)
+	}
 	
-	GetKeyState, verticalVal, %JoystickNum_vertical%%mappedVertialAxis%
-	verticalVal := Round(-2*(verticalVal/100 - 0.5), 2)
+	if(JoystickNum_vertical and mappedVertialAxis) {
+		GetKeyState, verticalVal, %JoystickNum_vertical%%mappedVertialAxis%
+		verticalVal := Round(-2*(verticalVal/100 - 0.5), 2)
+	}
 	
-	;***Get the rotation axis values	
-	GetKeyState, pitchVal, %JoystickNum_pitch%%mappedPitchAxis%
-	pitchVal := Round(2*(pitchVal/100 - 0.5), 2)
+	;***Get the rotation axis values
+	if(JoystickNum_pitch and mappedPitchAxis) {
+		GetKeyState, pitchVal, %JoystickNum_pitch%%mappedPitchAxis%
+		pitchVal := Round(2*(pitchVal/100 - 0.5), 2)
+	}
 	
-	GetKeyState, yawVal, %JoystickNum_yaw%%mappedYawAxis%
-	yawVal := Round(2*(yawVal/100 - 0.5), 2)
+	if(JoystickNum_yaw and mappedYawAxis) {
+		GetKeyState, yawVal, %JoystickNum_yaw%%mappedYawAxis%
+		yawVal := Round(2*(yawVal/100 - 0.5), 2)
+	}
 
-	GetKeyState, rollVal, %JoystickNum_roll%%mappedRollAxis%
-	rollVal := Round(2*(rollVal/100 - 0.5), 2)
+	if(JoystickNum_roll and mappedRollAxis) {
+		GetKeyState, rollVal, %JoystickNum_roll%%mappedRollAxis%
+		rollVal := Round(2*(rollVal/100 - 0.5), 2)
+	}
 	
 
 	;***Get the thruster key values
@@ -179,6 +193,7 @@ MainLoop:
 	YawRightKey := GetKeyState(mappedYawRightKey)
 	PitchUpKey := GetKeyState(mappedPitchUpKey)
 	PitchDownKey := GetKeyState(mappedPitchDownKey)	
+	
 	
 	If (RollLeftKey and !RollRightKey) {
 		rollVal := -1.0
