@@ -1,13 +1,12 @@
 ;Credit goes to Tariq Porter for the GDI+ wrapper, and Marius Șucan for extending it with many useful functions
-;v0.91 on 2019-10-11
+;v0.92 on 2019-10-11
 
 #SingleInstance force
 SetTitleMatchMode 1
 #MaxThreadsPerHotkey 3
 SetFormat, float, 03  ; Omit decimal point from axis position percentages.
 
-#Include <Gdip_All> ;these are expected to be in a "Lib" folder
-#Include <GdipHelper>
+#Include <Gdip_All> ;this is expected to be in a "Lib" folder
 
 ;-----------------------------Notes
 ; This script will draw 4 overlay graphics to depict thruster and rotation values that are being driven by joysticks/gamepads, or keys.
@@ -15,9 +14,22 @@ SetFormat, float, 03  ; Omit decimal point from axis position percentages.
 ; If you want to change what input values are driving each of the graphics, please see the DrawAllGraphics function and swap the argument values around.
 ; Press Alt-P to toggle whether the graphics are displayed or not.
 
+
+
+
+;---------------------- START OF CONFIG SECTION
+
+;Some general variables 
+global bDisplayTitleBar := false ;if you want to see an actual window for the overlay
+
+global bDisplayLeftOverlays := true
+global bDisplayRightOverlays := true
+
+global canvasWidth := A_ScreenWidth
+global canvasHeight := 380         ;you may want to increase this if you increase the size of the graphics
+global canvasY := A_ScreenHeight - canvasHeight - 48 
+
 ;-----------------Device and Key Mapping. Use an empty/blank value if you don't have particular mappings
-
-
 ;Thrust Keys. Should be string values
 mappedVerticalDownKey := "j"
 mappedVertialUpKey := "k"
@@ -65,9 +77,9 @@ global overlayRadius := 60
 global overlayDiameter := 2*overlayRadius
 
 global overlayThruster2DX := 40
-global overlayThruster2DY := A_ScreenHeight - overlayDiameter - 40
+global overlayThruster2DY := canvasHeight - overlayDiameter - 40
 
-global overlayRotation2DX := A_ScreenWidth - overlayDiameter - 40
+global overlayRotation2DX := canvasWidth - overlayDiameter - 40
 global overlayRotation2DY := overlayThruster2DY
 
 global overlayTextYOffset := 50 ;***Increase this value if the rotated text isn't low enough (lame workaround for now)
@@ -112,7 +124,6 @@ GetKeyState, joy_info, %JoystickNumber%JoyInfo
 
 SetTimer, mainLoop,16
 MainLoop:
-
 	lateralVal := 0.0
 	thrustVal := 0.0
 	verticalVal := 0.0
@@ -159,8 +170,7 @@ MainLoop:
 	LeftKey := GetKeyState(mappedLateralLeftKey)
 	RightKey := GetKeyState(mappedLateralRightKey)
 	ForwardKey := GetKeyState(mappedForwardKey)
-	BackKey := GetKeyState(mappedBackKey)
-	
+	BackKey := GetKeyState(mappedBackKey)	
 	
 	If (DownKey and !UpKey) {
 		verticalVal := 1.0
@@ -168,7 +178,6 @@ MainLoop:
 	else if(UpKey and !DownKey) {
 		verticalVal := -1.0
 	}
-
 	
 	if(LeftKey and !RightKey) {
 		lateralVal := -1.0
@@ -176,7 +185,6 @@ MainLoop:
 	else if(RightKey and !LeftKey) {
 		lateralVal := 1.0
 	}
-
 	
 	if(ForwardKey and !BackKey) {
 		thrustVal := -1.0
@@ -184,7 +192,6 @@ MainLoop:
 	else if(BackKey and !ForwardKey) {
 		thrustVal := 1.0
 	}
-
 	
 	;Get the rotation key values
 	RollLeftKey := GetKeyState(mappedRollLeftKey)
@@ -217,19 +224,62 @@ MainLoop:
 	else if(PitchDownKey and !PitchUpKey) {
 		pitchVal := 1.0
 	}
-	
 
 	DrawAllGraphics(lateralVal, thrustVal, verticalVal, yawVal, pitchVal, rollVal)
-	
 
 return
+
+OverlayWindowGuiEscape:
+OverlayWindowGuiClose:
+	EndDrawGDIP()
+	Gui OverlayWindow: Destroy
+	ExitApp
+Return
+
 
 ;Setup GDI+ objects
 Initialize()
 {
 	global
 	
-	SetUpGDIP()
+	If !pToken := Gdip_Startup()
+	{
+		MsgBox, 48, gdiplus error!, Gdiplus failed to start. Please ensure you have gdiplus on your system
+		ExitApp
+	}	
+
+	
+	;Create the main container window
+	Gui OverlayWindow: New, hWndhMap -DPIScale +OwnDialogs
+	Gui, Color, EEAA99
+	Gui +LastFound
+	WinSet, TransColor, EEAA99
+	yOffset := A_ScreenHeight - canvasHeight - 48
+	
+	if(bDisplayTitleBar) {
+		Gui +Caption
+	}
+	else {
+		canvasY := canvasY + 25 ;adjustment since we won't have a title bar
+		Gui +AlwaysOnTop
+		Gui -Caption
+	}
+	
+	Gui Show, NA y%canvasY% w%canvasWidth% h%canvasHeight%, OverlayWindow
+
+	; Create a layered window (+E0x80000 : must be used for UpdateLayeredWindow to work!) that is always on top (+AlwaysOnTop), has no taskbar entry or caption
+	;Gui, 1: -Caption +E0x80000 +LastFound +AlwaysOnTop +ToolWindow +OwnDialogs
+	Gui, 1: -Caption +E0x80000 +LastFound +ToolWindow +OwnDialogs +ParentOverlayWindow
+
+	; Show the window
+	Gui, 1: Show, NA
+
+	; Get a handle to this window we have created in order to update it later
+	hwnd1 := WinExist()
+		
+	
+	
+	
 	Gdip_SetSmoothingMode(G, 4)	
 	
 	;Setup Brush/Pen objects
@@ -241,25 +291,30 @@ Initialize()
 	pBrushMarker := Gdip_BrushCreateSolid("0x" transparencyMarkers colorMarkers )
 	
 	pPenShadow := Gdip_CreatePen("0x" transparency colorBackground, 4)
+	
+	StartDrawGDIP()	
 
 }
 
 ;Draw the graphic overlays
 DrawAllGraphics(lateralVal, thrustVal, verticalVal, yawVal, pitchVal, rollVal)
 {
-	StartDrawGDIP()
 	ClearDrawGDIP()
 
 	if(bShowingOverlays) {
-		Draw2DOverlay(lateralVal, thrustVal, overlayThruster2DX, overlayThruster2DY, "LATERAL", "THRUST")
-		Draw1DOverlayVertical(verticalVal, overlayThruster1DX, overlayThruster1DY, "VERTICAL")
-		
-		Draw2DOverlay(yawVal, pitchVal, overlayRotation2DX, overlayRotation2DY, "YAW", "PITCH")
-		Draw1DOverlayHorizontal(rollVal, overlayRotation1DX, overlayRotation1DY, "ROLL")
+	
+		if(bDisplayLeftOverlays) {
+			Draw2DOverlay(lateralVal, thrustVal, overlayThruster2DX, overlayThruster2DY, "LATERAL", "THRUST")
+			Draw1DOverlayVertical(verticalVal, overlayThruster1DX, overlayThruster1DY, "VERTICAL")		
+		}
+	
+		if(bDisplayRightOverlays) {
+			Draw2DOverlay(yawVal, pitchVal, overlayRotation2DX, overlayRotation2DY, "YAW", "PITCH")
+			Draw1DOverlayHorizontal(rollVal, overlayRotation1DX, overlayRotation1DY, "ROLL")		
+		}
 	}
 	
-	
-	EndDrawGDIP()
+	UpdateDrawGDIP()	
 }
 
 
@@ -376,6 +431,47 @@ Draw2DOverlay(xVal, yVal, xPosition, yPosition, xAxisLabel, yAxisLabel)
 	Gdip_DrawOrientedString(G, yAxisLabel, textFont, textSize, 0, xPosition + overlayDiameter + 15, yPosition + overlayTextYOffset
 		, 0, overlayDiameter, 270, pBrushPrimary, 0, 1, 1)
 }
+
+
+StartDrawGDIP() {
+	global
+	
+	hbm := CreateDIBSection(canvasWidth, canvasHeight)
+	hdc := CreateCompatibleDC()
+	obm := SelectObject(hdc, hbm)
+	G := Gdip_GraphicsFromHDC(hdc)	
+}
+
+
+ClearDrawGDIP() {
+	global
+	Gdip_GraphicsClear(G)
+}
+
+UpdateDrawGDIP()
+{
+	global
+	UpdateLayeredWindow(hwnd1, hdc, 0, 0, canvasWidth, canvasHeight)
+}
+
+EndDrawGDIP() {
+	global	
+
+	Gdip_DeletePen(pPenPrimary)
+	Gdip_DeletePen(pPenSecondary)
+	Gdip_DeleteBrush(pBrushPrimary)
+	Gdip_DeleteBrush(pBrushBackground)
+	Gdip_DeleteBrush(pBrushMarker)
+
+	SelectObject(hdc, obm)
+	DeleteObject(hbm)
+	DeleteDC(hdc)
+	Gdip_DeleteGraphics(G)
+	Gdip_Shutdown(pToken)
+}
+
+
+
 
 
 ~!p::
