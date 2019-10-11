@@ -1,3 +1,6 @@
+;Credit goes to Tariq Porter for the GDI+ wrapper, and Marius Șucan for extending it with many useful functions
+;v0.90 on 2019-10-11
+
 #SingleInstance force
 SetTitleMatchMode 1
 #MaxThreadsPerHotkey 3
@@ -79,7 +82,7 @@ global dotDiameter := dotRadius * 2
 
 
 ;--------------------Styling variables for the axis labels
-global textFont = "Orbitron"
+global textFont = "Arial"
 global textSize := 17
 
 
