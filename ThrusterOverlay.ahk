@@ -1,13 +1,19 @@
 ;Credit goes to Tariq Porter for the GDI+ wrapper, and Marius Șucan for extending it with many useful functions
-;v0.90 on 2019-10-11
+;v0.91 on 2019-10-11
 
 #SingleInstance force
 SetTitleMatchMode 1
 #MaxThreadsPerHotkey 3
 SetFormat, float, 03  ; Omit decimal point from axis position percentages.
 
-#Include <Gdip_All>
+#Include <Gdip_All> ;these are expected to be in a "Lib" folder
 #Include <GdipHelper>
+
+;-----------------------------Notes
+; This script will draw 4 overlay graphics to depict thruster and rotation values that are being driven by joysticks/gamepads, or keys.
+; Mouse inputs are currently not tracked.
+; If you want to change what input values are driving each of the graphics, please see the DrawAllGraphics function and swap the argument values around.
+; Press Alt-P to toggle whether the graphics are displayed or not.
 
 ;-----------------Device and Key Mapping. Use an empty/blank value if you don't have particular mappings
 ;Thrust Keys
@@ -96,6 +102,7 @@ global pBrushPrimary
 global pBrushBackground
 global pBrushMarker
 
+global bShowingOverlays := true
 
 Initialize()
 
@@ -103,6 +110,13 @@ GetKeyState, joy_info, %JoystickNumber%JoyInfo
 
 SetTimer, mainLoop,16
 MainLoop:
+
+	lateralVal := 0.0
+	thrustVal := 0.0
+	verticalVal := 0.0
+	pitchVal := 0.0
+	yawVal := 0.0
+	rollVal := 0.0
 	
 	;****Get the thruster axis values
 	GetKeyState, lateralVal, %JoystickNum_lateral%%mappedLateralAxis%
@@ -111,13 +125,20 @@ MainLoop:
 	GetKeyState, thrustVal, %JoystickNum_thrust%%mappedThrustAxis%
 	thrustVal := Round(2*(thrustVal/100 - 0.5), 2)
 	
-	axisZ := 0.0
-	IfInString, joy_info, Z
-	{
-		GetKeyState, verticalVal, %JoystickNum_vertical%%mappedVertialAxis%
-		verticalVal := Round(-2*(verticalVal/100 - 0.5), 2)
-	}
+	GetKeyState, verticalVal, %JoystickNum_vertical%%mappedVertialAxis%
+	verticalVal := Round(-2*(verticalVal/100 - 0.5), 2)
 	
+	;***Get the rotation axis values	
+	GetKeyState, pitchVal, %JoystickNum_pitch%%mappedPitchAxis%
+	pitchVal := Round(2*(pitchVal/100 - 0.5), 2)
+	
+	GetKeyState, yawVal, %JoystickNum_yaw%%mappedYawAxis%
+	yawVal := Round(2*(yawVal/100 - 0.5), 2)
+
+	GetKeyState, rollVal, %JoystickNum_roll%%mappedRollAxis%
+	rollVal := Round(2*(rollVal/100 - 0.5), 2)
+	
+
 	;***Get the thruster key values
 	DownKey := GetKeyState(mappedVerticalDownKey)
 	UpKey := GetKeyState(mappedVertialUpKey)
@@ -133,6 +154,7 @@ MainLoop:
 	else if(UpKey and !DownKey) {
 		verticalVal := -1.0
 	}
+
 	
 	if(LeftKey and !RightKey) {
 		lateralVal := -1.0
@@ -140,28 +162,15 @@ MainLoop:
 	else if(RightKey and !LeftKey) {
 		lateralVal := 1.0
 	}
+
 	
 	if(ForwardKey and !BackKey) {
 		thrustVal := -1.0
 	}
 	else if(BackKey and !ForwardKey) {
 		thrustVal := 1.0
-	}	
-	
-	;***Get the rotation axis values
-	pitchVal := 0
-	yawVal := 0
-	rollVal := 0
-	
-	GetKeyState, pitchVal, %JoystickNum_pitch%%mappedPitchAxis%
-	pitchVal := Round(2*(pitchVal/100 - 0.5), 2)
-	
-	GetKeyState, yawVal, %JoystickNum_yaw%%mappedYawAxis%
-	yawVal := Round(2*(yawVal/100 - 0.5), 2)
+	}
 
-	GetKeyState, rollVal, %JoystickNum_roll%%mappedRollAxis%
-	rollVal := Round(2*(rollVal/100 - 0.5), 2)
-	
 	
 	;Get the rotation key values
 	RollLeftKey := GetKeyState(mappedRollLeftKey)
@@ -177,6 +186,7 @@ MainLoop:
 	else if(RollRightKey and !RollLeftKey) {
 		rollVal := 1.0
 	}
+
 	
 	if(YawLeftKey and !YawRightKey) {
 		yawVal := -1.0
@@ -184,14 +194,14 @@ MainLoop:
 	else if(YawRightKey and !YawLeftKey) {
 		yawVal := 1.0
 	}
+
 	
 	if(PitchUpKey and !PitchDownKey) {
 		pitchVal := -1.0
 	}
 	else if(PitchDownKey and !PitchUpKey) {
 		pitchVal := 1.0
-	}	
-	
+	}
 	
 
 	DrawAllGraphics(lateralVal, thrustVal, verticalVal, yawVal, pitchVal, rollVal)
@@ -199,6 +209,7 @@ MainLoop:
 
 return
 
+;Setup GDI+ objects
 Initialize()
 {
 	global
@@ -218,24 +229,26 @@ Initialize()
 
 }
 
+;Draw the graphic overlays
 DrawAllGraphics(lateralVal, thrustVal, verticalVal, yawVal, pitchVal, rollVal)
 {
 	StartDrawGDIP()
 	ClearDrawGDIP()
 
-	
-	Draw2DOverlay(lateralVal, thrustVal, overlayThruster2DX, overlayThruster2DY, "LATERAL", "THRUST")
-	Draw1DOverlayVertical(verticalVal, overlayThruster1DX, overlayThruster1DY, "VERTICAL")
-	
-	Draw2DOverlay(yawVal, pitchVal, overlayRotation2DX, overlayRotation2DY, "YAW", "PITCH")
-	Draw1DOverlayHorizontal(rollVal, overlayRotation1DX, overlayRotation1DY, "ROLL")
+	if(bShowingOverlays) {
+		Draw2DOverlay(lateralVal, thrustVal, overlayThruster2DX, overlayThruster2DY, "LATERAL", "THRUST")
+		Draw1DOverlayVertical(verticalVal, overlayThruster1DX, overlayThruster1DY, "VERTICAL")
+		
+		Draw2DOverlay(yawVal, pitchVal, overlayRotation2DX, overlayRotation2DY, "YAW", "PITCH")
+		Draw1DOverlayHorizontal(rollVal, overlayRotation1DX, overlayRotation1DY, "ROLL")
+	}
 	
 	
 	EndDrawGDIP()
 }
 
 
-
+;Draws a 1-Dimensional overlay that runs horizontally
 Draw1DOverlayHorizontal(value, xPosition, yPosition, AxisLabel)
 {
 	global
@@ -267,7 +280,7 @@ Draw1DOverlayHorizontal(value, xPosition, yPosition, AxisLabel)
 
 }
 
-
+;Draws a 1-Dimensional overlay that runs vertically
 Draw1DOverlayVertical(value, xPosition, yPosition, AxisLabel)
 {
 	global
@@ -299,7 +312,7 @@ Draw1DOverlayVertical(value, xPosition, yPosition, AxisLabel)
 }
 
 
-
+;Draw a circular 2-Dimensional overlay
 Draw2DOverlay(xVal, yVal, xPosition, yPosition, xAxisLabel, yAxisLabel)
 {
 	global
@@ -348,3 +361,8 @@ Draw2DOverlay(xVal, yVal, xPosition, yPosition, xAxisLabel, yAxisLabel)
 	Gdip_DrawOrientedString(G, yAxisLabel, textFont, textSize, 0, xPosition + overlayDiameter + 15, yPosition + overlayTextYOffset
 		, 0, overlayDiameter, 270, pBrushPrimary, 0, 1, 1)
 }
+
+
+~!p::
+	bShowingOverlays := !bShowingOverlays
+return
