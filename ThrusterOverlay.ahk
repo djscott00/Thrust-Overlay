@@ -7,6 +7,7 @@ SetTitleMatchMode 1
 SetFormat, float, 03  ; Omit decimal point from axis position percentages.
 
 #Include <Gdip_All> ;this is expected to be in a "Lib" folder
+#Include <MouseDelta>
 
 ;-----------------------------Notes
 ; This script will draw 4 overlay graphics to depict thruster and rotation values that are being driven by joysticks/gamepads, or keys.
@@ -20,6 +21,9 @@ SetFormat, float, 03  ; Omit decimal point from axis position percentages.
 ;---------------------- START OF CONFIG SECTION
 
 ;Some general variables 
+global bUseMouse := true ;set to false if you do not use the mouse axis for pitch/yaw/roll inputs
+global bMouseXIsYaw := true ;true if mouse X axis controls yaw, false for roll
+
 global bDisplayTitleBar := false ;if you want to see an actual window for the overlay
 
 global bDisplayLeftOverlays := true
@@ -118,19 +122,30 @@ global pBrushMarker
 
 global bShowingOverlays := true
 
+global mouseQueue := []
+global curMouseX := 0
+global curMouseY := 0
+
+mouseTracker := new MouseDelta("MouseEventHandler")
+
+
+
 Initialize()
 
 GetKeyState, joy_info, %JoystickNumber%JoyInfo
 
-SetTimer, mainLoop,16
+SetTimer, mainLoop,16 ; Rate of 60Hz
 MainLoop:
+
+	;reset variables
 	lateralVal := 0.0
 	thrustVal := 0.0
 	verticalVal := 0.0
 	pitchVal := 0.0
 	yawVal := 0.0
 	rollVal := 0.0
-	
+
+
 	;****Get the thruster axis values
 	if(JoystickNum_lateral and mappedLateralAxis) {
 		GetKeyState, lateralVal, %JoystickNum_lateral%%mappedLateralAxis%
@@ -151,6 +166,7 @@ MainLoop:
 	if(JoystickNum_pitch and mappedPitchAxis) {
 		GetKeyState, pitchVal, %JoystickNum_pitch%%mappedPitchAxis%
 		pitchVal := Round(2*(pitchVal/100 - 0.5), 2)
+		
 	}
 	
 	if(JoystickNum_yaw and mappedYawAxis) {
@@ -163,7 +179,33 @@ MainLoop:
 		rollVal := Round(2*(rollVal/100 - 0.5), 2)
 	}
 	
-
+	
+	
+	;Get mouse input values.
+	;Mouse input supercedes joystick inputs
+	if(bUseMouse) {
+		mouseDeltaX := 0
+		mouseDeltaY := 0
+		mouseXFloat := 0.0
+		mouseYFloat := 0.0
+		HandleMouseEventQueue(mouseDeltaX, mouseDeltaY)
+		TranslateMouseValues(mouseDeltaX, mouseDeltaY, mouseXFloat, mouseYFloat)		
+		
+		if(mouseXFloat != 0.0) {
+			if(bMouseXIsYaw) {
+				yawVal := mouseXFloat
+			}
+			else {
+				rollVal := mouseXFloat
+			}
+		}
+		if(mouseYFloat != 0.0) {
+			pitchVal := mouseYFloat
+		}
+	}
+	
+	
+	;Key values ultimately supercede other input devices
 	;***Get the thruster key values
 	DownKey := GetKeyState(mappedVerticalDownKey)
 	UpKey := GetKeyState(mappedVertialUpKey)
@@ -200,8 +242,7 @@ MainLoop:
 	YawRightKey := GetKeyState(mappedYawRightKey)
 	PitchUpKey := GetKeyState(mappedPitchUpKey)
 	PitchDownKey := GetKeyState(mappedPitchDownKey)	
-	
-	
+
 	If (RollLeftKey and !RollRightKey) {
 		rollVal := -1.0
 	}
@@ -233,6 +274,9 @@ OverlayWindowGuiEscape:
 OverlayWindowGuiClose:
 	EndDrawGDIP()
 	Gui OverlayWindow: Destroy
+	mouseTracker.Delete()
+	mouseTracker := ""	
+	
 	ExitApp
 Return
 
@@ -241,6 +285,10 @@ Return
 Initialize()
 {
 	global
+	
+	if(bUseMouse) {
+		mouseTracker.SetState(true) ;turn on mouse tracking
+	}
 	
 	If !pToken := Gdip_Startup()
 	{
@@ -292,9 +340,144 @@ Initialize()
 	
 	pPenShadow := Gdip_CreatePen("0x" transparency colorBackground, 4)
 	
-	StartDrawGDIP()	
+	StartDrawGDIP()
+	
+	
 
 }
+
+
+
+
+MouseEventHandler(MouseID, deltaXCur := 0, deltaYCur := 0)
+{
+	curTime := A_TickCount
+	
+	newVector := new mouseVector(deltaXCur, deltaYCur, curTime)	
+	mouseQueue.insert(newVector)
+}
+
+HandleMouseEventQueue(ByRef recentXDelta, ByRef recentYDelta)
+{
+	recentXDelta := 0
+	recentYDelta := 0
+
+	Loop, % mouseQueue.MaxIndex() {
+		curVector := mouseQueue.Remove(1)
+		timeSince := A_TickCount - curVector.timeStamp
+		
+		if(timeSince <= 100) { ;only consider somewhat recent mouse events
+			recentXDelta += curVector.xVector
+			recentYDelta += curVector.yVector
+		}
+	}
+	
+	;Limit the absolute values to a max of 50
+	if(recentXDelta < -50) {
+		recentXDelta := -50
+	}
+	else if(recentXDelta > 50) {
+		recentXDelta := 50
+	}
+	
+	if(recentYDelta < -50 ) {
+		recentYDelta := -50
+	}
+	else if(recentYDelta > 50) {
+		recentYDelta := 50
+	}
+
+}
+
+TranslateMouseValues(actualXDelta, actualYDelta, ByRef displayX, ByRef displayY)
+{
+	global
+	
+	static bufferX := []
+	static bufferY := []
+	
+	;First determine the integer values. 
+	;If we don't have an actual non-zero delta, we will decay from the last values
+	
+	if(actualXDelta = 0 and curMouseX > 3) {
+		curMouseX := curMouseX - 4
+	}
+	else if(actualXDelta = 0 and curMouseX < -3) {
+		curMouseX := curMouseX + 4
+	}
+	else {
+		curMouseX := actualXDelta
+	}
+	
+	if(actualYDelta = 0 and curMouseY > 3) {
+		curMouseY := curMouseY - 4
+	}
+	else if(actualYDelta = 0 and curMouseY < -3) {
+		curMouseY := curMouseY + 4
+	}
+	else {
+		curMouseY := actualYDelta
+	}
+	
+	
+	;Then convert the integer values to float from -1.0 to 1.0
+	
+	if(curMouseX <= -50) {
+		displayX := -1.0
+	}
+	else if (curMouseX >= 50) {
+		displayX := 1.0
+	}
+	else {
+		displayX := Round(0.02 * curMouseX, 2)
+	}
+	
+	if(curMouseY <= -50) {
+		displayY := -1.0
+	}
+	else if (curMouseY >= 50) {
+		displayY := 1.0
+	}
+	else {
+		displayY := Round(0.02 * curMouseY, 2)
+	}
+	
+
+	;To smooth out the display, we'll buffer this result and then take an average of previous ones in the buffer
+	
+	if(bufferX.Length() > 6) {
+		bufferX.remove(1)
+		bufferY.remove(1)
+	}
+	bufferX.insert(displayX)
+	bufferY.insert(displayY)
+	
+	sumBufferX := 0
+	sumBufferY := 0
+	
+	Loop % bufferX.Length() {
+		sumBufferX += bufferX[A_Index]
+		sumBufferY += bufferY[A_Index]	
+	}
+	
+	averageX := Round(sumBufferX/bufferX.Length(), 2)
+	averageY := Round(sumBufferY/bufferY.Length(), 2)
+	
+	
+	
+	;the average tends to be 0 when making very small changes, so don't use it for the result in these cases
+	if(averageX != 0) {
+		displayX := averageX
+	}
+	if(averageY != 0) {
+		displayY := averageY
+	}
+
+	
+}
+
+
+
 
 ;Draw the graphic overlays
 DrawAllGraphics(lateralVal, thrustVal, verticalVal, yawVal, pitchVal, rollVal)
