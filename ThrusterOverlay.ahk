@@ -1,5 +1,5 @@
 ;Credit goes to Tariq Porter for the GDI+ wrapper, and Marius Șucan for extending it with many useful functions
-;v0.92 on 2019-10-11
+;v0.93 on 2019-10-16
 
 #SingleInstance force
 SetTitleMatchMode 1
