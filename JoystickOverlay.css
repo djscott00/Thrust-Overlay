@@ -1,0 +1,135 @@
+
+.backdrop {
+	background-color: #4444ff;
+	padding: 5px;
+	margin: 0px;
+	z-index: -2;
+}
+
+.label {
+	font-family: "Orbitron", sans-serif;
+	font-size: 20px;
+	color: #03b2e1;
+	text-shadow: 2px 2px 2px #000000;
+}
+
+#boost {
+	display: inline-block;
+	margin-right: 10px;
+	margin-top: 10px;
+	margin-bottom: 10px;
+	/* transform: rotate(-20deg) translate(-7px, 6px); */
+}
+
+#drift {
+	display: inline-block;
+	margin-left: 10px;
+	margin-top: 10px;
+	margin-bottom: 10px;
+	/* transform: rotate(20deg) translate(10px, 7px); */
+}
+
+.activetext {
+	color: rgba(237, 235, 92, 0.75);
+}
+
+.label-horizontal {
+	left: 48px;
+	position: relative;
+	margin: 5px;
+}
+
+.label-vertical {
+	left: 137px;
+	top: 100px;
+	vertical-align: middle;
+	margin: 0 0 0 0;
+	display: inline-block;
+	position: absolute;
+	transform: rotate(-90deg);
+}
+
+.container-1D {
+	width: 150px;
+	margin-bottom: 0px;
+}
+
+.container-2D {
+	width: 200px;
+	display: inline-block;
+	position: relative;
+
+}
+
+.shape {
+	background-color: rgba(0,0,0, 0.75);
+	border: 3px solid #03b2e1;
+	display: inline-block;
+	position: relative;	
+	margin: 0;
+	padding: 0;	
+	z-index: 0;
+}
+
+.circle-main {
+	 height: 150px;
+	 width: 150px;
+	 border-radius: 50%;	 
+	 display: inline-block;
+	 
+}
+
+.rectangle-main {
+	height: 22px;
+	width: 150px;
+	border-radius: 5px;
+}
+
+.line {
+	background: #002f3b;
+	border: 2px;
+	padding: 1px;
+	z-index: 0;
+}
+
+
+.line-horiz {
+	height: 2px;
+	width: 140px;
+	left: 4px;
+	top: 50%;
+	transform: translate(0, -50%);
+	position: absolute;
+
+}
+
+.line-vert {
+	height: 140px;
+	width: 2px;
+	left: 50%;
+	top: 4px;
+	transform: translate(-50%, 0);
+	position: absolute;
+}
+
+.line-vert-short {
+	height: 14px;
+	width: 2px;
+	left: 50%;
+	top: 2px;
+	transform: translate(-50%, 0);
+	position: absolute;
+}
+
+.circle-dot {
+	background-color: rgba(237, 235, 92, 0.75);
+	height: 20px;
+	width: 20px;
+	border-radius: 50%;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 3;
+
+}

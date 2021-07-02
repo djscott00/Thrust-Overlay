@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv='X-UA-Compatible' content='IE=edge'>
+		<link rel="stylesheet" href="JoystickOverlay.css">
+
+	</head>
+	<body>
+		<div class="backdrop">
+
+			<div class="container-1D">
+				<h1 class="label label-horizontal">ROLL</h1>
+
+				<div class="shape rectangle-main">
+					<div class="line line-vert-short"></div>
+					<div class="circle-dot" id="dot-1D"> </div>
+				</div>
+			</div> 
+
+			<h1 class="label" id="boost">BOOST</h1>
+			<h1 class="label" id="drift">DRIFT</h1>
+
+			<BR>
+
+			<div class="container-2D">
+				<h1 class="label label-horizontal">YAW</h1>
+
+				<div class="shape circle-main">
+					<div class="line line-horiz"></div>
+					<div class="line line-vert"></div>
+					<div class="circle-dot" id="dot-2D"> </div>
+				</div>
+
+				<h1 class="label label-vertical">PITCH</h1>
+			</div>
+
+		</div>
+		
+		<script src="JoystickOverlay.js"></script>
+
+	</body>
+</html>

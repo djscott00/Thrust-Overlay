@@ -1,0 +1,14 @@
+{
+  "name":					"JoystickOverlay",
+  "width":					260,
+  "height":					350,
+  "protocol":				"app",
+  "protocol_call":			"app_call",
+  "html_url":				"JoystickOverlay.html",
+  "NavComplete_call":		"app_page",
+  "Nav_sounds":				false,
+  "fullscreen":				false,
+  "DPI_Aware":				true,
+  "ZoomLevel":				100,
+  "AllowZoomLevelChange":	true
+}
